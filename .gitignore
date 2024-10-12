@@ -3,3 +3,9 @@ private_data.py
 
 # Optionally, ignore PyCharm specific files
 .idea/
+
+# Ignore virtual environment
+.venv/
+
+# Optionally, ignore PyCharm specific files
+.idea/
