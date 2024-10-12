@@ -1,11 +1,14 @@
 # Ignore private data file
 private_data.py
 
-# Optionally, ignore PyCharm specific files
-.idea/
+# Ignore Python bytecode cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Ignore virtual environment
 .venv/
 
-# Optionally, ignore PyCharm specific files
+# Ignore PyCharm specific files
 .idea/
