@@ -8,6 +8,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from openpyxl import load_workbook
+from private_data import url
+from private_data import email_address
+from private_data import account
+from private_data import password
 
 
 def wait_for_element(driver, by, value, timeout=30):
@@ -42,7 +47,51 @@ def download_image(url, file_name):
         print(f"下載圖片時發生錯誤：{str(e)}")
 
 
-def auto_login_search_and_download(url, email, account, password, article_number):
+def read_article_numbers(file_path, sheet_name, column_name):
+    wb = load_workbook(filename=file_path, read_only=True)
+    ws = wb[sheet_name]
+    
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    print("標頭行內容:", header_row)
+    
+    try:
+        column_index = header_row.index(column_name)
+    except ValueError:
+        print(f"錯誤：在標頭行中找不到列名 '{column_name}'")
+        print("可用的列名:", ", ".join(header_row))
+        return []
+    
+    article_numbers = [row[column_index] for row in ws.iter_rows(min_row=2, values_only=True) if row[column_index]]
+    
+    return article_numbers
+
+
+def find_and_download_image(driver, article_number):
+    xpaths = [
+        f"//img[contains(@class, 'aspect-ratio-image__image') and contains(@alt, '{article_number}')]",
+        f"//img[contains(@class, 'aspect-ratio-image__image')]",
+        f"//img[contains(@class, 'aspect-ratio-image__image') and contains(@src, '{article_number}')]"
+    ]
+    
+    for xpath in xpaths:
+        try:
+            img_elements = driver.find_elements(By.XPATH, xpath)
+            for img_element in img_elements:
+                img_src = img_element.get_attribute('src')
+                if img_src:
+                    alt_text = img_element.get_attribute('alt')
+                    file_name = f"Product_{article_number}_{alt_text[:30]}"
+                    download_image(img_src, file_name)
+                    print(f"成功下載貨號 {article_number} 的商品圖片")
+                    return True
+        except Exception as e:
+            print(f"使用 XPath '{xpath}' 查找圖片時出錯: {str(e)}")
+    
+    print(f"無法找到貨號 {article_number} 的商品圖片")
+    return False
+
+
+def auto_login_search_and_download(url, email, account, password, article_numbers):
     driver = None
     try:
         chrome_options = Options()
@@ -52,36 +101,43 @@ def auto_login_search_and_download(url, email, account, password, article_number
         # chrome_options.add_argument("--headless")
         
         driver = webdriver.Chrome(options=chrome_options)
+        print("")
         driver.get(url)
         
+        # 登入過程
         email_input = wait_for_element(driver, By.ID, "username")
         if email_input:
             email_input.clear()
             email_input.send_keys(email)
+            print("確認輸入 Email 成功")
         else:
             raise Exception("無法找到電子郵件輸入欄位")
         
         continue_button = wait_for_element(driver, By.XPATH, "//button[contains(text(), 'Continue')]")
         if continue_button:
             continue_button.click()
+            print("點擊continue button 成功")
         else:
             raise Exception("無法找到繼續按鈕")
         
         input_account = wait_for_element(driver, By.ID, "userNameInput")
         if input_account:
             input_account.send_keys(account)
+            print("確認輸入 account 成功")
         else:
             raise Exception("無法找到帳號輸入欄位")
         
         input_password = wait_for_element(driver, By.ID, "passwordInput")
         if input_password:
             input_password.send_keys(password)
+            print("確認輸入 password 成功")
         else:
             raise Exception("無法找到密碼輸入欄位")
         
         sign_in_btn = wait_for_element(driver, By.ID, "submitButton")
         if sign_in_btn:
             sign_in_btn.click()
+            print("確認點擊sign_in_btn button 成功")
         else:
             raise Exception("無法找到登入按鈕")
         
@@ -89,33 +145,36 @@ def auto_login_search_and_download(url, email, account, password, article_number
         if selector:
             select = Select(selector)
             select.select_by_value("zh-TW-TW")
+            print("確認已點擊selector，並選取 zh-TW-TW")
         else:
             raise Exception("無法找到語言選擇器")
         
         time.sleep(5)
         
-        for _ in range(3):
-            search_input = wait_for_element(driver, By.ID, "search", timeout=20)
-            if search_input:
-                search_input.clear()
-                search_input.send_keys(article_number)
-                search_input.send_keys(Keys.ENTER)
-                break
+        for article_number in article_numbers:
+            for _ in range(3):
+                search_input = wait_for_element(driver, By.ID, "search", timeout=20)
+                if search_input:
+                    search_input.clear()
+                    search_input.send_keys(article_number)
+                    search_input.send_keys(Keys.ENTER)
+                    break
+                else:
+                    time.sleep(2)
             else:
-                time.sleep(2)
-        else:
-            raise Exception("無法找到搜尋欄位")
+                print(f"無法找到貨號 {article_number} 的搜尋欄位")
+                continue
+            
+            time.sleep(10)  # 給予頁面加載時間
+            
+            if not find_and_download_image(driver, article_number):
+                print(f"無法找到貨號 {article_number} 的圖片，繼續下一個貨號")
+            
+            # 返回主頁面，準備下一次搜索
+            driver.get(url)
+            time.sleep(5)
         
-        time.sleep(5)
-        
-        img_element = wait_for_element(driver, By.XPATH, "//img[contains(@alt, 'FLINTAN')]")
-        if img_element:
-            img_src = img_element.get_attribute('src')
-            download_image(img_src, f"FLINTAN_{article_number}")
-        else:
-            print("無法找到商品圖片")
-        
-        print("登入、搜尋和圖片下載過程已成功完成")
+        print("所有貨號的搜尋和圖片下載過程已完成")
     
     except Exception as e:
         print(f"發生錯誤：{str(e)}")
@@ -129,12 +188,14 @@ def auto_login_search_and_download(url, email, account, password, article_number
             input()
             driver.quit()
 
-
-# 使用方法
-url = "https://piafacts.ikea.net/search"
-email_address = "dwhao@ikea.com.tw"
-account = "IKEA\\dahao"
-password = "IKtw241008"
-article_number = "30489032"
-
-auto_login_search_and_download(url, email_address, account, password, article_number)
+# 主程式
+if __name__ == "__main__":
+    
+    # 讀取 Excel 文件中的貨號
+    excel_file_path = "file_1.xlsx"
+    sheet_name = "Sheet1"   # 根據實際工作表名稱修改
+    column_name = "art"     # 根據實際列名修改
+    
+    article_numbers = read_article_numbers(excel_file_path, sheet_name, column_name)
+    
+    auto_login_search_and_download(url, email_address, account, password, article_numbers)
