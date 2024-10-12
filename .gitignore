@@ -1,0 +1,5 @@
+# Ignore private data file
+private_data.py
+
+# Optionally, ignore PyCharm specific files
+.idea/
