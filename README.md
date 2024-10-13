@@ -1,10 +1,10 @@
-# IKEA PIA Facts Selenium Scraper
+# PIA Facts Selenium Scraper
 
-This project is a Selenium-based web scraper designed to automate the process of logging into IKEA PIA Facts, searching for product information using article numbers, and downloading product images.
+This project is a Selenium-based web scraper designed to automate the process of logging into PIA Facts, searching for product information using article numbers, and downloading product images.
 
 ## Features
 
-- Automated login to IKEA PIA Facts
+- Automated login to PIA Facts
 - Batch processing of article numbers from an Excel file
 - Automated search and download of product images
 - Handling of various image formats (JPEG, PNG)
@@ -22,8 +22,8 @@ Before you begin, ensure you have met the following requirements:
 
 1. Clone this repository:
    ```
-   git clone https://github.com/dwhao84/Selenium-IKEA-PIA-Facts
-   cd Selenium-IKEA-PIA-Facts
+   git clone https://github.com/dwhao84/Selenium-PIA-Facts
+   cd Selenium-PIA-Facts
    ```
 
 2. Create and activate a virtual environment:
@@ -39,9 +39,9 @@ Before you begin, ensure you have met the following requirements:
 
 4. Create a `private_data.py` file in the project root and add your login credentials:
    ```python
-   url = "https://piafacts.ikea.net/search"
-   email_address = "your_email@ikea.com"
-   account = "IKEA\\your_username"
+   url = "XXXX"
+   email_address = "your_emai.com"
+   account = "your_username"
    password = "your_password"
    ```
 
@@ -54,7 +54,7 @@ Before you begin, ensure you have met the following requirements:
    python main.py
    ```
 
-3. The script will login to IKEA PIA Facts, search for each article number, and download the corresponding product images.
+3. The script will login to PIA Facts, search for each article number, and download the corresponding product images.
 
 ## Project Structure
 
