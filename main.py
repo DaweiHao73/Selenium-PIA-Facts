@@ -80,7 +80,7 @@ def find_and_download_image(driver, article_number):
                 img_src = img_element.get_attribute('src')
                 if img_src:
                     alt_text = img_element.get_attribute('alt')
-                    file_name = f"Product_{article_number}_{alt_text[:30]}"
+                    file_name = f"{article_number}"
                     download_image(img_src, file_name)
                     print(f"成功下載貨號 {article_number} 的商品圖片")
                     return True
@@ -89,7 +89,6 @@ def find_and_download_image(driver, article_number):
     
     print(f"無法找到貨號 {article_number} 的商品圖片")
     return False
-
 
 def auto_login_search_and_download(url, email, account, password, article_numbers):
     driver = None
@@ -113,12 +112,32 @@ def auto_login_search_and_download(url, email, account, password, article_number
         else:
             raise Exception("無法找到電子郵件輸入欄位")
         
-        continue_button = wait_for_element(driver, By.XPATH, "//button[contains(text(), 'Continue')]")
-        if continue_button:
-            continue_button.click()
-            print("點擊continue button 成功")
-        else:
+        # 修改後的繼續按鈕處理邏輯
+        continue_button = None
+        selectors = [
+            (By.CLASS_NAME, "_button-login-id"),
+            (By.CSS_SELECTOR, ".c0a486a03.c3a925026.cc4e2760d.cf0fbb154._button-login-id"),
+            (By.XPATH, "//button[contains(text(), '繼續')]"),
+            (By.XPATH, "//button[contains(@type, 'submit')]"),
+            (By.XPATH, "//button[contains(text(), 'Continue')]")
+        ]
+
+        for selector_type, selector_value in selectors:
+            try:
+                continue_button = wait_for_element(driver, selector_type, selector_value, timeout=10)
+                if continue_button and continue_button.is_displayed() and continue_button.is_enabled():
+                    continue_button.click()
+                    print("點擊continue button 成功")
+                    break
+            except Exception as e:
+                print(f"嘗試選擇器 {selector_value} 失敗，嘗試下一個...")
+                continue
+
+        if not continue_button:
             raise Exception("無法找到繼續按鈕")
+
+        # 等待頁面加載
+        time.sleep(2)
         
         input_account = wait_for_element(driver, By.ID, "userNameInput")
         if input_account:
@@ -141,6 +160,9 @@ def auto_login_search_and_download(url, email, account, password, article_number
         else:
             raise Exception("無法找到登入按鈕")
         
+        # 增加等待時間以確保頁面完全加載
+        time.sleep(3)
+        
         selector = wait_for_element(driver, By.ID, "unit-selector", timeout=60)
         if selector:
             select = Select(selector)
@@ -152,27 +174,36 @@ def auto_login_search_and_download(url, email, account, password, article_number
         time.sleep(5)
         
         for article_number in article_numbers:
-            for _ in range(3):
-                search_input = wait_for_element(driver, By.ID, "search", timeout=20)
-                if search_input:
-                    search_input.clear()
-                    search_input.send_keys(article_number)
-                    search_input.send_keys(Keys.ENTER)
-                    break
-                else:
+            tries = 0
+            while tries < 3:
+                try:
+                    search_input = wait_for_element(driver, By.ID, "search", timeout=20)
+                    if search_input:
+                        search_input.clear()
+                        time.sleep(1)  # 加入短暫延遲確保清除完成
+                        search_input.send_keys(article_number)
+                        time.sleep(1)  # 加入短暫延遲確保輸入完成
+                        search_input.send_keys(Keys.ENTER)
+                        break
+                    else:
+                        time.sleep(2)
+                except Exception as e:
+                    print(f"搜尋嘗試 {tries + 1} 失敗: {str(e)}")
+                    tries += 1
                     time.sleep(2)
             else:
                 print(f"無法找到貨號 {article_number} 的搜尋欄位")
                 continue
             
-            time.sleep(10)  # 給予頁面加載時間
+            # 增加頁面加載等待時間
+            time.sleep(15)  # 增加等待時間，確保圖片完全加載
             
             if not find_and_download_image(driver, article_number):
                 print(f"無法找到貨號 {article_number} 的圖片，繼續下一個貨號")
             
             # 返回主頁面，準備下一次搜索
             driver.get(url)
-            time.sleep(5)
+            time.sleep(7)  # 增加等待時間，確保頁面完全加載
         
         print("所有貨號的搜尋和圖片下載過程已完成")
     
